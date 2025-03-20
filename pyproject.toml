@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "relex"
+version = "0.0.1"
+description = "A solution package for shared functionality in programming task for RELEX interview."
+authors = [
+  {name="Kasper Janehag", email="kasper.janehag@gmail.com"}
+]
+keywords = ["relex"]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "polars>=0.16.0",
+  "plotly>=5.0.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.0.285"  # Rust-based linter/formatter
+]
+
+[tool.ruff]
+select = ["E", "F", "B", "W"]
+ignore = ["E501"]
+line-length = 88
+target-version = "py310"
