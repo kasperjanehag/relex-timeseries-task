@@ -83,8 +83,8 @@ def plot_components_with_forecast(
     forecast_dates,
     component_means_dict,
     component_stddevs_dict,
-    component_forecast_means_dict=None,
-    component_forecast_stddevs_dict=None,
+    forecast_component_means=None,
+    forecast_component_stddevs=None,
     x_locator=None,
     x_formatter=None,
 ):
@@ -132,12 +132,12 @@ def plot_components_with_forecast(
 
         # If we have forecast components, plot those too
         if (
-            component_forecast_means_dict is not None
-            and component_forecast_stddevs_dict is not None
-            and component_name in component_forecast_means_dict
+            forecast_component_means is not None
+            and forecast_component_stddevs is not None
+            and component_name in forecast_component_means
         ):
-            forecast_mean = component_forecast_means_dict[component_name]
-            forecast_stddev = component_forecast_stddevs_dict[component_name]
+            forecast_mean = forecast_component_means[component_name]
+            forecast_stddev = forecast_component_stddevs[component_name]
 
             # Ensure forecast_mean and forecast_stddev are 1D arrays
             if forecast_mean.ndim == 0:
@@ -187,7 +187,7 @@ def plot_components_with_forecast(
             ax.xaxis.set_major_formatter(x_formatter)
 
         # Add legend if we have both historical and forecast data
-        if component_forecast_means_dict is not None:
+        if forecast_component_means is not None:
             ax.legend(loc="best")
 
         # Add vertical line at the forecast start point
@@ -198,7 +198,10 @@ def plot_components_with_forecast(
 
     fig.autofmt_xdate()
     fig.tight_layout()
-    return fig, axes_dict
+    plt.suptitle(f"Component Decomposition for Item {item_num}")
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.9)
+    plt.show()
 
 
 def plot_elbo_loss_curve(elbo_loss_curve, item_num):
