@@ -10,17 +10,26 @@ authors = [
   {name="Kasper Janehag", email="kasper.janehag@gmail.com"}
 ]
 keywords = ["relex"]
-license = "MIT"
+license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "polars>=0.16.0",
-  "plotly>=5.0.0"
+  "plotly>=5.0.0",
+  "numpy>=1.21.0",
+  "pyarrow",
+  "pandas",
+  "nbformat>=4.2.0",
+
+  # Tensorflow
+  "tensorflow",
+  "tensorflow_probability",
+  "tf-keras",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "ruff>=0.0.285"  # Rust-based linter/formatter
+  "ruff>=0.0.285"
 ]
 
 [tool.ruff]
@@ -28,3 +37,7 @@ select = ["E", "F", "B", "W"]
 ignore = ["E501"]
 line-length = 88
 target-version = "py310"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["data", "notebooks"]
