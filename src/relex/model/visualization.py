@@ -1,3 +1,5 @@
+import collections
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -5,58 +7,90 @@ import seaborn as sns
 
 
 def plot_forecast(
-    dates_pd,
-    y,
+    historical_data,
+    forecast_data,
     forecast_mean,
     forecast_scale,
     forecast_samples,
+    sales_col,
     title,
     x_locator=None,
     x_formatter=None,
 ):
-    """Plot a forecast distribution against the 'true' time series."""
+    """
+    Plot a forecast distribution against the observed time series.
+
+    Parameters:
+    train_df: DataFrame containing training data with datetime index
+    test_df: DataFrame containing test data with datetime index
+    forecast_mean: Mean values of the forecast
+    forecast_scale: Standard deviation of the forecast
+    forecast_samples: Sample paths from the forecast distribution
+    sales_col: Column name for the sales data
+    title: Title for the plot
+    x_locator: Optional matplotlib locator for x-axis
+    x_formatter: Optional matplotlib formatter for x-axis
+
+    Returns:
+    fig, ax: The matplotlib figure and axis objects
+    """
     colors = sns.color_palette()
     c1, c2 = colors[0], colors[1]
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(1, 1, 1)
 
-    num_steps = len(y)
-    num_steps_forecast = forecast_mean.shape[-1]
-    num_steps_train = num_steps - num_steps_forecast
+    # Extract datetime index and sales data
+    train_dates = historical_data.index
+    test_dates = forecast_data.index
+    all_dates = pd.concat([historical_data, forecast_data]).index
 
-    ax.plot(dates_pd, y, lw=2, color=c1, label="ground truth")
-
-    # Create forecast dates correctly - weekly frequency
-    last_train_date = dates_pd[num_steps_train - 1]
-
-    # Create weekly forecast dates
-    forecast_dates = pd.date_range(
-        start=pd.to_datetime(last_train_date) + pd.Timedelta(days=7),
-        periods=num_steps_forecast,
-        freq="W",
+    # Get actual sales data
+    train_sales = historical_data[sales_col].values
+    test_sales = (
+        forecast_data[sales_col].values if sales_col in forecast_data.columns else None
     )
 
-    # Convert to numpy datetime64 array for consistency
-    forecast_steps = np.array(forecast_dates, dtype="datetime64[ns]")
+    # Plot the training data
+    ax.plot(train_dates, train_sales, lw=2, color=c1, label="observed")
 
-    ax.plot(forecast_steps, forecast_samples.T, lw=1, color=c2, alpha=0.1)
+    # Plot test data if available
+    if test_sales is not None:
+        ax.plot(test_dates, test_sales, lw=2, color=c1, linestyle="-")
 
-    ax.plot(forecast_steps, forecast_mean, lw=2, ls="--", color=c2, label="forecast")
+    # Plot forecast samples
+    for i in range(forecast_samples.shape[0]):
+        ax.plot(test_dates, forecast_samples[i], lw=1, color=c2, alpha=0.1)
+
+    # Plot forecast mean and confidence interval
+    ax.plot(test_dates, forecast_mean, lw=2, ls="--", color=c2, label="forecast")
     ax.fill_between(
-        forecast_steps,
+        test_dates,
         forecast_mean - 2 * forecast_scale,
         forecast_mean + 2 * forecast_scale,
         color=c2,
         alpha=0.2,
+        label="95% confidence",
     )
 
-    ymin, ymax = (
-        min(np.min(forecast_samples), np.min(y)),
-        max(np.max(forecast_samples), np.max(y)),
+    # Set y-axis limits
+    all_values = np.concatenate(
+        [
+            train_sales,
+            forecast_samples.flatten(),
+            forecast_mean - 2 * forecast_scale,
+            forecast_mean + 2 * forecast_scale,
+        ]
     )
+
+    if test_sales is not None:
+        all_values = np.concatenate([all_values, test_sales])
+
+    ymin, ymax = np.min(all_values), np.max(all_values)
     yrange = ymax - ymin
     ax.set_ylim([ymin - yrange * 0.1, ymax + yrange * 0.1])
-    ax.set_title(f"{title}")
+
+    # Set the title and customize the x-axis if needed
+    ax.set_title(title)
     ax.legend()
 
     if x_locator is not None:
@@ -64,51 +98,44 @@ def plot_forecast(
         ax.xaxis.set_major_formatter(x_formatter)
         fig.autofmt_xdate()
 
-    # ax.axvline(
-    #     dates_pd[len(data["train_sales"]) - 1],
-    #     linestyle="--",
-    #     color="red",
-    #     label="Forecast Start",
-    # )
-    # ax.legend()
-    # plt.tight_layout()
-    # plt.show()
+    # Add vertical line to separate training and forecast periods
+    ax.axvline(
+        train_dates[-1], linestyle="--", color="k", alpha=0.5, label="Forecast Start"
+    )
+
+    ax.legend()
+    plt.tight_layout()
 
     return fig, ax
 
 
 def plot_components_with_forecast(
-    dates,
-    train_dates,
+    historical_dates,
     forecast_dates,
-    component_means_dict,
-    component_stddevs_dict,
+    historical_component_means,
+    historical_component_stddevs,
     forecast_component_means=None,
     forecast_component_stddevs=None,
     x_locator=None,
     x_formatter=None,
+    item_num=None,
 ):
     """
     Plot the contributions of posterior components including their forecasts.
     Handles different dimension shapes for historical and forecast components.
     """
-    import collections
-
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import seaborn as sns
 
     colors = sns.color_palette()
     c1, c2 = colors[0], colors[1]
     c3 = colors[2]  # For forecasts
 
     axes_dict = collections.OrderedDict()
-    num_components = len(component_means_dict)
+    num_components = len(historical_component_means)
     fig = plt.figure(figsize=(12, 2.5 * num_components))
 
-    for i, component_name in enumerate(component_means_dict.keys()):
-        component_mean = component_means_dict[component_name]
-        component_stddev = component_stddevs_dict[component_name]
+    for i, component_name in enumerate(historical_component_means.keys()):
+        component_mean = historical_component_means[component_name]
+        component_stddev = historical_component_stddevs[component_name]
 
         # Ensure component_mean and component_stddev are 1D arrays
         if component_mean.ndim == 0:
@@ -120,10 +147,14 @@ def plot_components_with_forecast(
 
         # Plot historical component
         ax.plot(
-            train_dates, component_mean, lw=2, color=c1, label="Historical Component"
+            historical_dates,
+            component_mean,
+            lw=2,
+            color=c1,
+            label="Historical Component",
         )
         ax.fill_between(
-            train_dates,
+            historical_dates,
             component_mean - 2 * component_stddev,
             component_mean + 2 * component_stddev,
             color=c1,
@@ -191,8 +222,8 @@ def plot_components_with_forecast(
             ax.legend(loc="best")
 
         # Add vertical line at the forecast start point
-        if len(train_dates) > 0:
-            ax.axvline(train_dates[-1], linestyle="--", color="red", alpha=0.5)
+        if len(historical_dates) > 0:
+            ax.axvline(historical_dates[-1], linestyle="--", color="red", alpha=0.5)
 
         axes_dict[component_name] = ax
 
