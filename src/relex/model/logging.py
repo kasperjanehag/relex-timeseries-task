@@ -5,9 +5,9 @@ import numpy as np
 logger = getLogger(__name__)
 
 
-def log_inferred_parameters(item_model, parameter_samples):
+def log_inferred_parameters(model, parameter_samples):
     logger.info("Inferred parameters:")
-    for param in item_model.parameters:
+    for param in model.parameters:
         logger.info(
             "{}: {} +- {}".format(
                 param.name,
