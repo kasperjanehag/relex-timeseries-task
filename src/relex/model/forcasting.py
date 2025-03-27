@@ -1,12 +1,20 @@
+import tensorflow as tf
 import tensorflow_probability as tfp
 
 
-def forecast_model(item_model, data, parameter_samples):
+def forecast_model(
+    item_model, historical_data, parameter_samples, num_steps_forecast, sales_col
+):
+    # Convert to tensor directly (not passing DataFrame to STS)
+    observed_time_series = tf.convert_to_tensor(
+        historical_data[sales_col].values, dtype=tf.float32
+    )
+
     forecast_dist = tfp.sts.forecast(
         model=item_model,
-        observed_time_series=data["train_sales"],
+        observed_time_series=observed_time_series,
         parameter_samples=parameter_samples,
-        num_steps_forecast=data["num_forecast_steps"],
+        num_steps_forecast=num_steps_forecast,
     )
 
     # Get forecast statistics
